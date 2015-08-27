@@ -1,0 +1,3 @@
+# automa
+AWS Scala helpers
+
