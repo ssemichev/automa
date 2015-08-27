@@ -5,10 +5,11 @@ import automa.watcher.common.AppConfig
 import awscala._
 import awscala.dynamodbv2.DynamoDB
 import com.amazonaws.services.lambda.runtime.events.S3Event
+import com.typesafe.scalalogging.LazyLogging
 
 import scala.collection.JavaConverters._
 
-class Observer {
+class Observer extends LazyLogging {
 
   import Observer._
 
@@ -24,10 +25,9 @@ class Observer {
         val created = r.getEventTime.toString
         val file = s"$bucket/$key"
 
-        //TODO Add logging to the console
-        println(file)
+        logger.info(s"Object name: $file")
 
-        getDataSourceByPath(getPath(key)) foreach {
+        getDataSourceByPath(key) foreach {
           ds => {
             //TODO Move to the helper method
             implicit val dynamoDB = DynamoDB().at(Region.US_EAST_1)
@@ -47,13 +47,8 @@ object Observer {
   }
 
   def getDataSourceByPath(path: String): Option[String] = {
-    AppConfig.Watcher.dataSources.find({ case (a, b) => b.dataPath.startsWith(path) }) map {
+    AppConfig.Watcher.dataSources.find({ case (a, b) => path.startsWith(b.dataPath) }) map {
       t => t._1
     }
-  }
-
-  def getPath(fullPath: String): String = {
-    val sep = fullPath.lastIndexOf('/')
-    if (sep == -1) fullPath else fullPath.substring(0, sep)
   }
 }
