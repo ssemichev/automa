@@ -5,15 +5,18 @@ import automa.watcher.common.{AppConfig, TownClockEvent}
 import awscala._
 import awscala.dynamodbv2.{DynamoDB, _}
 import com.amazonaws.services.lambda.runtime.events.SNSEvent
+import com.amazonaws.services.sns.AmazonSNSClient
+import com.amazonaws.services.sns.model.PublishRequest
+import com.github.nscala_time.time.Imports._
 import com.typesafe.scalalogging.LazyLogging
-import org.joda.time.{Hours, DateTimeConstants, Days}
+import org.joda.time.{DateTimeConstants, Days, Hours}
 import org.json4s._
 import org.json4s.native.JsonMethods._
-import com.github.nscala_time.time.Imports._
 
 import scala.collection.JavaConverters._
 
 class DataSourcesValidator extends LazyLogging {
+
   import DataSourcesValidator._
 
   def validate(event: SNSEvent): Boolean = {
@@ -56,30 +59,40 @@ object DataSourcesValidator extends LazyLogging {
     val isHourMatch = scheduler.hour.exists(h => h.toString == clockEvent.hour)
     val isMinuteMatch = clockEvent.minute == scheduler.min.toString
 
-    val isScheduledresult = isHourMatch && isMinuteMatch
-    logger.info(s"TEST isScheduled: $isScheduledresult")
-
-    true
+    isHourMatch && isMinuteMatch
   }
 
   def validateDataSources(dataSourcesConfigs: Map[String, DataSource], dataSourcesState: List[DataSourceState]): Unit = {
-    val results = dataSourcesConfigs.map {
-      //TODO change to partial function
-      ds => validateDataSource(ds, dataSourcesState.find(state => state.name == ds._1))
-    }
+    val notUpdated = dataSourcesConfigs.map {
+      ds => (ds, dataSourcesState.find(state => state.name == ds._1))
+    } collect isNotUpdated
 
-    //TODO Send error notifications
-    results.foreach( r => logger.info(r) )
+    logger.info(s"Validated data sources: ${(dataSourcesConfigs.keys.toList diff notUpdated.toList).mkString("; ")}")
+
+    if (notUpdated.nonEmpty) {
+      logger.info("Found non-updated datasources")
+      notUpdated.foreach(r => logger.info(r))
+      val errorMessage = "Error: " + notUpdated.mkString("; ")
+
+      //TODO add script to add permission to SNS topic
+      //TODO move topicArn to config file
+      val topicArn = "arn:aws:sns:us-east-1:374809787535:general-non-critical-tvdev-pagerduty";
+      val snsClient = new AmazonSNSClient()
+      val publishRequest = new PublishRequest(topicArn, errorMessage)
+      snsClient.publish(publishRequest)
+    }
   }
 
-  def validateDataSource(ds: (String, DataSource), state: Option[DataSourceState]): String = {
-    state map {
+  def validateDataSource(ds: (String, DataSource), state: Option[DataSourceState]): Boolean = {
+    state exists {
       s =>
         val updated = awscala.DateTime.parse(s.updated)
-        if (isUpdatedInTime(updated, ds._2.policy.hours)) s"Ok: ${ds._1}" else s"Error: ${ds._1}"
-    } getOrElse {
-      s"Error: ${ds._1}"
+        isUpdatedInTime(updated, ds._2.policy.hours)
     }
+  }
+
+  val isNotUpdated: PartialFunction[((String, DataSource), Option[DataSourceState]), String] = {
+    case (ds: (String, DataSource), state: Option[DataSourceState]) if !validateDataSource(ds, state) => ds._1
   }
 
   def isUpdatedInTime(updated: DateTime, maxInterval: Int): Boolean = {
@@ -109,12 +122,13 @@ object DataSourcesValidator extends LazyLogging {
     val items = table.query(keyConditions = Seq("Type" -> cond.eq("watcher"))).map(item => item.attributes).toList
 
     //TODO Rename created to updated
-    items.map(i => DataSourceState(
-      name = i.find(_.name == "DataSource").head.value.s.get,
-      updated = i.find(_.name == "created").head.value.s.get,
-      file = i.find(_.name == "file").head.value.s.get,
-      size = Some(i.find(_.name == "size").head.value.s.get.toInt).getOrElse(0)
-    ))
+    items.map(i =>
+      DataSourceState(
+        name = i.find(_.name == "DataSource").head.value.s.get,
+        updated = i.find(_.name == "created").head.value.s.get,
+        file = i.find(_.name == "file").head.value.s.get,
+        size = i.find(_.name == "size").head.value.n.getOrElse("0").toInt
+      ))
   }
 }
 

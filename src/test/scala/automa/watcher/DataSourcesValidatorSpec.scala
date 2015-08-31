@@ -4,15 +4,13 @@ import automa.UnitSpec
 import automa.watcher.common.TownClockEvent
 import com.github.nscala_time.time.Imports._
 
-
-
 class DataSourcesValidatorSpec extends UnitSpec {
   import DataSourcesValidator._
 
   behavior of "DataSourcesValidatorObject"
 
   it should "calculate isScheduled property" in {
-//    isScheduled(TownClockEvent(hour = "14", minute = "30")) should be (false)
+    isScheduled(TownClockEvent(hour = "14", minute = "30")) should be (false)
     isScheduled(TownClockEvent(hour = "10", minute = "0")) should be (true)
   }
 
