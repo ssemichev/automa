@@ -19,4 +19,10 @@ class AppConfigSpec extends UnitSpec {
     AppConfig.Watcher.table should not be empty
   }
 
+  it should "read data-sources-validation-scheduler properties" in {
+    val dataSourceValidationScheduler = AppConfig.Watcher.dataSourceValidationScheduler
+    dataSourceValidationScheduler.hour should not be empty
+    dataSourceValidationScheduler.min should be >= 0
+  }
+
 }

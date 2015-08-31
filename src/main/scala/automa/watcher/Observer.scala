@@ -1,6 +1,7 @@
 package automa.watcher
 
 import java.net.URLDecoder
+
 import automa.watcher.common.AppConfig
 import awscala._
 import awscala.dynamodbv2.DynamoDB
@@ -13,7 +14,7 @@ class Observer extends LazyLogging {
 
   import Observer._
 
-  def trackS3ObjectCreatedEvent(event: S3Event): Unit = {
+  def trackS3ObjectCreatedEvent(event: S3Event): Boolean = {
     val record = event.getRecords.asScala.headOption
 
     record foreach {
@@ -38,10 +39,12 @@ class Observer extends LazyLogging {
         }
       }
     }
+
+    true
   }
 }
 
-object Observer {
+object Observer extends LazyLogging {
   def decodeS3Key(key: String): String = {
     URLDecoder.decode(key.replace("+", " "), "utf-8")
   }

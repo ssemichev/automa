@@ -21,7 +21,9 @@ libraryDependencies ++= Seq(
   "com.github.seratch" %% "awscala" % "0.5.+",
   "net.ceedubs" %% "ficus" % "1.1.2",
   "org.slf4j" % "slf4j-simple" % "1.7.12",
-  "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0"
+  "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0",
+  "org.json4s" %% "json4s-native" % "3.2.11",
+  "com.github.nscala-time" %% "nscala-time" % "2.2.0"
 )
 
 assemblyMergeStrategy in assembly := {
