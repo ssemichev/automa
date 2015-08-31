@@ -26,6 +26,8 @@ class DataSourcesValidator extends LazyLogging {
       val snsEvent = r.getSNS
       val props = parseOpt(snsEvent.getMessage)
 
+      logger.info(s"Message: $props")
+
       if ((props.getOrElse(JNothing) \ "type").values == "chime") {
         runValidationJob(props.get)
       }
