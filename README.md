@@ -3,7 +3,7 @@ AWS Scala helpers
 
 ## Alarms
     DataSourcesWatcherAlarm
-    DataSourcesWatcherAlarm
+    DataSourcesValidatorAlarm
 
 
 ```
