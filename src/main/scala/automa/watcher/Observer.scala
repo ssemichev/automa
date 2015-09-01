@@ -23,19 +23,13 @@ class Observer extends LazyLogging {
         val bucket = decodeS3Key(s3Event.getBucket.getName)
         val key = decodeS3Key(s3Event.getObject.getKey)
         val size = s3Event.getObject.getSizeAsLong
-        val created = r.getEventTime.toString
+        val updated = r.getEventTime.toString
         val file = s"$bucket/$key"
 
         logger.info(s"Object name: $file")
 
         getDataSourceByPath(key) foreach {
-          ds => {
-            //TODO Move to the helper method
-            implicit val dynamoDB = DynamoDB().at(Region.US_EAST_1)
-            val table = AppConfig.Watcher.table
-            dynamoDB.putItem(tableName = table, "Type" -> "watcher", "DataSource" -> ds,
-              "created" -> created, "file" -> file, "size" -> size)
-          }
+          ds => saveMetrics("Type" -> "watcher", "DataSource" -> ds, "updated" -> updated, "file" -> file, "size" -> size)
         }
       }
     }
@@ -53,5 +47,12 @@ object Observer extends LazyLogging {
     AppConfig.Watcher.dataSources.find({ case (a, b) => path.startsWith(b.dataPath) }) map {
       t => t._1
     }
+  }
+
+  def saveMetrics(metrics: (String, Any)*): Unit = {
+    implicit val dynamoDB = DynamoDB().at(Region.US_EAST_1)
+    val table = AppConfig.Watcher.table
+
+    dynamoDB.putItem(tableName = table, metrics:_*)
   }
 }

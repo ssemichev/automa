@@ -11,7 +11,7 @@ class DataSourcesValidatorSpec extends UnitSpec {
 
   it should "calculate isScheduled property" in {
     isScheduled(TownClockEvent(hour = "14", minute = "30")) should be (false)
-    isScheduled(TownClockEvent(hour = "10", minute = "0")) should be (true)
+    isScheduled(TownClockEvent(hour = "10", minute = "00")) should be (true)
   }
 
   it should "calculate how many weekends between two dates" in {

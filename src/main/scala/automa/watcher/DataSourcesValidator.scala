@@ -26,7 +26,7 @@ class DataSourcesValidator extends LazyLogging {
       val snsEvent = r.getSNS
       val props = parseOpt(snsEvent.getMessage)
 
-      logger.info(s"Message: $props")
+      logger.debug(s"Message: $props")
 
       if ((props.getOrElse(JNothing) \ "type").values == "chime") {
         runValidationJob(props.get)
@@ -58,8 +58,8 @@ object DataSourcesValidator extends LazyLogging {
   def isScheduled(clockEvent: TownClockEvent): Boolean = {
     val scheduler = AppConfig.Watcher.dataSourceValidationScheduler
 
-    val isHourMatch = scheduler.hour.exists(h => h.toString == clockEvent.hour)
-    val isMinuteMatch = clockEvent.minute == scheduler.min.toString
+    val isHourMatch = scheduler.hour.contains(clockEvent.hour)
+    val isMinuteMatch = clockEvent.minute == scheduler.min
 
     isHourMatch && isMinuteMatch
   }
@@ -74,15 +74,17 @@ object DataSourcesValidator extends LazyLogging {
     if (notUpdated.nonEmpty) {
       logger.info("Found non-updated datasources")
       notUpdated.foreach(r => logger.info(r))
-      val errorMessage = "Error: " + notUpdated.mkString("; ")
 
-      //TODO add script to add permission to SNS topic
-      //TODO move topicArn to config file
-      val topicArn = "arn:aws:sns:us-east-1:374809787535:general-non-critical-tvdev-pagerduty";
-      val snsClient = new AmazonSNSClient()
-      val publishRequest = new PublishRequest(topicArn, errorMessage)
-      snsClient.publish(publishRequest)
+      val errorMessage = "Error: " + notUpdated.mkString("; ")
+      publishMessage(errorMessage)
     }
+  }
+
+  def publishMessage(message: String): Unit = {
+    val topicArn = AppConfig.Watcher.notificationTopic
+    val snsClient = new AmazonSNSClient()
+    val publishRequest = new PublishRequest(topicArn, message)
+    snsClient.publish(publishRequest)
   }
 
   def validateDataSource(ds: (String, DataSource), state: Option[DataSourceState]): Boolean = {
@@ -123,11 +125,10 @@ object DataSourcesValidator extends LazyLogging {
 
     val items = table.query(keyConditions = Seq("Type" -> cond.eq("watcher"))).map(item => item.attributes).toList
 
-    //TODO Rename created to updated
     items.map(i =>
       DataSourceState(
         name = i.find(_.name == "DataSource").head.value.s.get,
-        updated = i.find(_.name == "created").head.value.s.get,
+        updated = i.find(_.name == "updated").head.value.s.get,
         file = i.find(_.name == "file").head.value.s.get,
         size = i.find(_.name == "size").head.value.n.getOrElse("0").toInt
       ))
