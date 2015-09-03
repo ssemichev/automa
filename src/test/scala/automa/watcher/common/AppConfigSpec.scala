@@ -12,7 +12,7 @@ class AppConfigSpec extends UnitSpec {
 
   it should "assign the default bucket for data source" in {
     val dataSources = AppConfig.Watcher.dataSources
-    dataSources("Silverpop").dataPath should be ("ftp/silverpop_partitioned/root/")
+    dataSources("Test01").dataPath should be ("ftp/test01/")
   }
 
   it should "read table property" in {
