@@ -48,7 +48,10 @@ object DataSourcesValidator extends LazyLogging {
 
     logger.info(s"TownClockEvent: $townClockEvent")
 
-    if (isScheduled(townClockEvent)) {
+    val isJobScheduled = isScheduled(townClockEvent)
+    logger.info(s"isJobScheduled: $isJobScheduled")
+
+    if (isJobScheduled) {
       val dataSourcesConfigs = AppConfig.Watcher.dataSources
       val dataSourcesState = getDataSourcesState
       validateDataSources(dataSourcesConfigs, dataSourcesState)
