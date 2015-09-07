@@ -60,10 +60,13 @@ object DataSourcesValidator extends LazyLogging {
   def isScheduled(clockEvent: TownClockEvent): Boolean = {
     val scheduler = AppConfig.Watcher.dataSourceValidationScheduler
 
+    val currentDay = awscala.DateTime.now().getDayOfWeek
+    val isWeekend = currentDay == DateTimeConstants.SATURDAY || currentDay == DateTimeConstants.SUNDAY
+
     val isHourMatch = scheduler.hour.contains(clockEvent.hour)
     val isMinuteMatch = clockEvent.minute == scheduler.min
 
-    isHourMatch && isMinuteMatch
+    !isWeekend && isHourMatch && isMinuteMatch
   }
 
   def validateDataSources(dataSourcesConfigs: Map[String, DataSource], dataSourcesState: List[DataSourceState]): Unit = {
