@@ -1,6 +1,7 @@
 package automa.watcher
 
 import automa.UnitSpec
+import automa.watcher.common.AppConfig.Watcher.DataSource
 import automa.watcher.common.TownClockEvent
 import com.github.nscala_time.time.Imports._
 
@@ -30,11 +31,20 @@ class DataSourcesValidatorSpec extends UnitSpec {
 
   it should "calculate isUpdatedInTime" in {
     val maxIntervalDuration = 48
-    isUpdatedInTime(awscala.DateTime.now() - 24.hours, maxIntervalDuration) should be (true)
-    isUpdatedInTime(awscala.DateTime.now() - 48.hours, maxIntervalDuration) should be (true)
+    val now = awscala.DateTime.now()
+    isUpdatedInTime(now, now - 24.hours, maxIntervalDuration) should be (true)
+    isUpdatedInTime(now, now - 48.hours, maxIntervalDuration) should be (true)
 
     //Subtract weekend hours for this test
-    isUpdatedInTime(awscala.DateTime.now() - 49.hours - 48.hours, maxIntervalDuration) should be (false)
+    isUpdatedInTime(now, now - 49.hours - 48.hours, maxIntervalDuration) should be (false)
+  }
+
+  it should "validate datasource" in {
+    val dsName = "TestDS"
+    val ds = DataSource(dsName)
+
+    val isValid = isDataSourceValid((dsName, ds), state = Some(DataSourceState(dsName, "2015-09-03T17:45:12.350Z", "file.txt", 1)))
+    isValid should be (false)
   }
 }
 

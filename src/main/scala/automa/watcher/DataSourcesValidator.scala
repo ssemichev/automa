@@ -89,24 +89,23 @@ object DataSourcesValidator extends LazyLogging {
   def publishMessage(message: String): Unit = {
     val topicArn = AppConfig.Watcher.notificationTopic
     val snsClient = new AmazonSNSClient()
-    val publishRequest = new PublishRequest(topicArn, message)
+    val publishRequest = new PublishRequest(topicArn, message, "DatasourceValidator ERROR. Some data sources have not been received in time")
     snsClient.publish(publishRequest)
   }
 
-  def validateDataSource(ds: (String, DataSource), state: Option[DataSourceState]): Boolean = {
+  def isDataSourceValid(ds: (String, DataSource), state: Option[DataSourceState]): Boolean = {
     state exists {
       s =>
         val updated = awscala.DateTime.parse(s.updated)
-        isUpdatedInTime(updated, ds._2.policy.hours)
+        isUpdatedInTime(awscala.DateTime.now(), updated, ds._2.policy.hours)
     }
   }
 
   val isNotUpdated: PartialFunction[((String, DataSource), Option[DataSourceState]), String] = {
-    case (ds: (String, DataSource), state: Option[DataSourceState]) if !validateDataSource(ds, state) => ds._1
+    case (ds: (String, DataSource), state: Option[DataSourceState]) if !isDataSourceValid(ds, state) => ds._1
   }
 
-  def isUpdatedInTime(updated: DateTime, maxInterval: Int): Boolean = {
-    val current = awscala.DateTime.now()
+  def isUpdatedInTime(current: DateTime, updated: DateTime, maxInterval: Int): Boolean = {
     val weekendsHours = weekendsBetween(updated, current) * 24
     val difHours = Hours.hoursBetween(updated, current).getHours - weekendsHours
 
